@@ -1,0 +1,276 @@
+=begin
+simple attack script
+
+author: Kitac (bbwhited@icloud.com)
+version:  1.1.21.23
+tags: hunting, MA
+game: Gemstone
+ you must edit friendlist, most professions are covered
+=end
+friendlist = ["Kitac", "Frittz", "Chuco", "Teclys", "Marchese"]
+
+def get_target
+  GameObj.targets.reject { |foe| (foe.status =~ /dead|gone/ || foe.noun =~ /^(?:arms?|tentacles?|palpi)$/ || foe.name =~ /^animated /) }
+end
+
+def spellactive()
+  if Char.name =~ /Kitac|Frittz|Chuco|Teclys|Marchese/
+    if !Spell[1711].active?
+      # sleep(0.2) while Script.running?('foreach')
+      # Script.run("foreach", "first 1 m=*quartz orb in inv;get;rub item;return", quiet: true)
+      multifput("get my quartz orb", "rub my quartz orb", "stow my quartz orb")
+    elsif !Spell[1701].active?
+      # sleep(0.2) while Script.running?('foreach')
+      # Script.run("foreach","first 1 m=gold coin in inv;get;rub item;return", quiet: true )
+      multifput("get my gold coin", "rub my gold coin", "stow my gold coin")
+    elsif !Spell[1712].active?
+      # sleep(0.2) while Script.running?('foreach')
+      # Script.run("foreach", "first 1 m=small statue in inv;get;rub item;return")
+      multifput("get my small statue", "rub my small statue", "stow my small statue")
+    end
+  end
+end
+
+def spellactive2
+  return unless Char.name =~ /Kitac|Frittz|Chuco|Teclys|Marchese/
+  miu_sack = GameObj.inv.find { |i| i.name =~ /#{UserVars.miu_sack}/i }
+  return if miu_sack.nil?
+
+  fput "look in ##{miu_sack.id}" unless GameObj.containers.keys.include?(miu_sack.id)
+
+  miu_checks = {
+    "Mystic Focus" => "heavy quartz orb",
+    "Arcane Decoy" => "gold coin",
+    "Spirit Guard" => "small statue",
+  }
+
+  miu_checks.each { |key, value|
+    if !Effects::Spells.active?(key) && (miu_item = GameObj.containers[miu_sack.id].find { |item| item.name =~ /#{value}/ })
+      multifput("get ##{miu_item.id} from ##{miu_sack.id}", "rub ##{miu_item.id}", "put ##{miu_item.id} in ##{miu_sack.id}")
+    end
+  }
+end
+
+def change_stance(new_stance, force = true)
+  return if Spell[1617].active? || Spell[216].active? || dead?
+
+  if (stance() =~ /#{new_stance}/)
+    return
+  elsif (checkcastrt() > 0 && new_stance =~ /def/)
+    return if stance() == 'guarded'
+  endLorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod
+  tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam,
+  quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo
+  consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse
+  cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non
+  proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+
+  if (force)
+    dothistimeout("stance #{new_stance}", 3, /You are now in an?|Cast Round Time in effect|You are unable to change/)
+  else
+    fput "stance #{new_stance}"
+  end
+end
+
+def get_loot()
+    if Char.name =~ /Marchese|Chuco|Teclys|Frittz/ && !checkleft.nil?
+        fput "stow left"
+        unless GameObj.dead.to_a.empty?
+            Script.start('eloot')
+        end
+    end
+end
+
+loop do
+  moblist = get_target()
+  target_line = waitfor("snaps his arm forward", "attempts to punch a", "fires a bone white faewood bolt at", "gestures at", "swings a", "swings at", "fires a", "channels at", "directing the sound of his voice at")
+
+  friendlist.each do |person|
+    if (target_line =~ /#{person} (snaps his arm forward|attempts to punch|fires a bone white faewood bolt|directing the sound of his voice|swings|fires|channels|gestures) (at|a) ./i)
+      moblist = get_target()
+      if Char.prof =~ /Cleric/
+        stand() if !standing?
+        change_stance('guarded')
+        spellactive2
+        if moblist.length >= 5
+          Spell[316].cast if Spell[316].affordable? && GameObj.targets.length > 0
+          waitcastrt?
+          Spell[317].cast if Spell[317].affordable? && GameObj.targets.length > 0
+          waitcastrt?
+          Spell[240].cast if !Spell[240].active? && Spell[240].affordable? && GameObj.targets.length > 0
+          waitcastrt?
+          Spell[302].cast if Spell[302].affordable? && GameObj.targets.length > 0
+          waitcastrt?
+          change_stance('guarded')
+          get_loot()
+        elsif moblist.length >= 1 && moblist.length < 5
+          Spell[302].cast if Spell[302].affordable? && GameObj.targets.length > 0
+          waitcastrt?
+          Spell[309].cast if Spell[309].affordable? && GameObj.targets.length > 0
+          waitcastrt?
+          Spell[320].cast if Spell[320].affordable? && GameObj.targets.length > 0
+          waitcastrt?
+          Spell[240].cast if !Spell[240].active? && Spell[240].affordable? && GameObj.targets.length > 0
+          waitcastrt?
+          Spell[302].cast if Spell[302].affordable? && GameObj.targets.length > 0
+          waitcastrt?
+          change_stance('guarded')
+          get_loot()
+        end
+      elsif Char.prof =~ /Monk/
+        # spellactive()
+        stand() if !standing?
+        change_stance('offensive')
+        if moblist.length >= 3
+          Script.run "combo"
+          fput "jab"
+          waitcastrt?
+          change_stance('defensive')
+        # get_loot()
+        elsif moblist.length >= 1 && moblist.length < 3
+          Script.run "combo"
+          fput "jab"
+          waitcastrt?
+          change_stance('defensive')
+          # get_loot()
+        end
+      elsif Char.prof =~ /Empath/
+        spellactive2
+        stand() if !standing?
+        change_stance('guarded')
+        if moblist.length >= 3
+          Spell[1115].cast if Spell[1115].affordable?
+          waitcastrt?
+          change_stance('guarded')
+          get_loot()
+        elsif moblist.length >= 1 && moblist.length < 3
+          Spell[1106].cast if Spell[1106].affordable?
+          waitcastrt?
+          change_stance('guarded')
+          get_loot()
+        end
+      elsif Char.prof =~ /Warrior/
+        stand() if !standing?
+        change_stance('offensive')
+        if moblist.length >= 3
+          twin = dothistimeout "mstrike target", 3, /you swing/ if Char.stamina <= 50
+          if twin != ~ /you swing/
+            fput "mstrike target"
+            waitcastrt?
+          end
+          change_stance('defensive')
+        elsif moblist.length >= 1 && moblist.length < 3
+          fput "attack"
+          waitcastrt?
+          change_stance('defensive')
+        end
+      elsif Char.prof =~ /Bard/
+        stand() if !standing?
+        change_stance('guarded')
+        spellactive()
+        if moblist.length >= 3
+          # shield_check()
+          Spell[1040].cast if Spell[1040].affordable? && !Spell[1040].active?
+          waitcastrt
+          Spell[1030].cast if Spell[1030].affordable?
+          waitcastrt?
+          change_stance('guarded')
+          get_loot()
+        elsif moblist.length >= 1 && moblist.length < 3
+          # shield_check()
+          Spell[1030].cast if Spell[1030].affordable?
+          waitcastrt?
+          change_stance('guarded')
+          get_loot()
+        end
+      elsif Char.prof =~ /Wizard/
+        stand() if not !standing?
+        spellactive2
+        if moblist.length >= 5
+          change_stance('offensive') unless checkstance =~ /offensive/
+          Spell[950].cast if Spell[950].affordable? && !Spell[999].active?
+          waitcastrt?
+          change_stance('guarded') unless checkstance =~ /guarded/
+          get_loot()
+        elsif moblist.length >= 1 && moblist.length < 5
+          stand() if !standing?
+          change_stance('offensive') unless checkstance =~ /offensive/
+          Spell[908].cast if Spell[908].affordable? && Spell[908].known?
+          waitcastrt?
+          Spell[903].cast if Spell[903].affordable?
+          waitcastrt?
+          change_stance('guarded') unless checkstance =~ /guarded/
+          get_loot()
+        end
+      elsif Char.prof =~ /Paladin/
+        stand() if !standing?
+        # spellactive()
+        change_stance('offensive') unless checkstance =~ /offensive/
+        if moblist.length >= 3
+          Spell[1630].cast if Spell[1630].affordable? && !Spell[1630].active?
+          waitcastrt?
+          fput "mstrike" if stamina? >= 60
+          waitcastrt?
+          change_stance('guarded')
+        elsif moblist.length >= 1 && moblist.length < 2
+          Spell[1602].cast if Spell[1602].affordable? && !Spell[1602].active?
+          waitcastrt?
+          fput "attack"
+          waitcastrt?
+          change_stance('guarded')
+        end
+      elsif Char.prof =~ /Rogue/
+        stand() if !standing?
+        # spellactive()
+        change_stance('offensive')
+        if moblist.length >= 5
+          fput "mstrike target" if stamina? >= 60
+          waitcastrt?
+          fput "hide"
+          waitcastrt?
+          fput "stalk kitac"
+          waitcastrt?
+          change_stance('guarded')
+        # get_loot()
+        elsif moblist.length >= 1 && moblist.length < 5
+          Spell[117].cast if Spell[117].affordable? && !Spell[117].active?
+          waitcastrt?
+          fput "mstrike" if stamina? >= 60
+          waitcastrt?
+          fput "hide"
+          waitcastrt?
+          fput "stalk kitac"
+          waitcastrt?
+          change_stance('guarded')
+          # get_loot()
+        end
+      elsif Char.prof =~ /Sorcerer/
+        stand() if not !standing?
+        spellactive2
+        change_stance('guarded')
+        if moblist.length >= 5
+          if Spell[709].affordable? && !GameObj.targets.any? { |t| t.noun =~ /arm|tentacle/ }
+            Spell[709].force_incant
+            waitcastrt?
+          end
+          Spell[719].cast if Spell[719].affordable?
+          waitcastrt?
+          change_stance('guarded')
+          get_loot()
+        elsif moblist.length >= 1 && moblist.length < 5
+          stand() if !standing?
+          change_stance('guarded')
+          if Spell[709].affordable? && !GameObj.targets.any? { |t| t.noun =~ /arm|tentacle/ }
+            Spell[709].force_incant
+            waitcastrt?
+          end
+          Spell[711].cast if Spell[711].affordable?
+          waitcastrt?
+          change_stance('guarded')
+          get_loot()
+        end
+      end
+
+    end
+  end
+end
