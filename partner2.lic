@@ -1,0 +1,232 @@
+=begin
+# partner script, if you have a hunting parter for MA'ing, this script works for diff things
+author: Aethor,Kitac
+version: 1.0.2
+tags: hunting
+game: Gemstone
+=end
+friendlist = ["Kitac","Chuco", "Teclys","Frittz", "Marchese"]
+leader = ["Kitac"]
+# 	def group_dothis()
+#		group.each { |member| do_client(";lnet chat to #{member} dothis target #{target}") }
+#		sleep 10
+#	end
+def spellactive()
+	if Char.name =~ /Kitac/
+		if !Spell[1711].active? 
+			multifput "get my q orb","rub my orb","stow my orb"
+		elsif !Spell[1701].active?
+			multifput "tap my talisman"
+		elsif !Spell[1712].active?
+			multifput "get my statue","rub my statue","stow my statue"
+		end
+	elsif Char.name =~ /Musix|Chuco|Teclys|Marchese|Frittz/
+		if !Spell[1711].active? 
+			multifput "get my q orb","rub my orb","stow my orb"
+		elsif !Spell[1701].active?
+			multifput "get my coin", "rub my coin", "stow my coin"
+		elsif !Spell[1712].active?
+			multifput "get my statue","rub my statue","stow my statue"
+		end
+	end
+end
+def wait_rt
+  target_line = matchtimeout 4, "Roundtime:",  "Cast Roundtime"
+    if (target_line =~ /Roundtime\: (\d+) sec/i)
+      sleep $1.to_f
+    elsif (target_line =~ /Cast Roundtime (\d+) seconds/i)
+      sleep $1.to_f
+    end
+end
+def get_target
+    npcs = GameObj.targets
+    npcs.delete_if { |npc| npc.name =~ /arm|arms|palpi|tentacle/ }
+    npcs.delete_if { |npc| npc.status =~ /dead|gone/ }
+end
+def change_stance( new_stance, force = true )
+        return if Spell[1617].active? || Spell[216].active? || dead?
+ 
+        if( stance() =~ /#{new_stance}/ )
+            return
+        elsif( checkcastrt() > 0 && new_stance =~ /def/ )
+            return if stance() == 'guarded'
+        end
+ 
+        if(force)
+            result = dothistimeout( "stance #{new_stance}", 3, /You are now in an?|Cast Round Time in effect|You are unable to change/ )
+        else
+            fput "stance #{new_stance}"
+        end
+    end
+def group_check()
+	if (event.type != :STAY_QUIET)
+        until (checkpcs.include?(leader))
+          	break if Char.name == leader
+
+          	start_script('go2', [group.room_id, '_disable_confirm_'])
+          	wait_while { running?('go2') }
+          	fput "join #{leader}"
+          	sleep(1)
+        end
+    end
+end
+def room_id()
+      return @leader.room_id()
+end
+def stand()
+
+		fput "stand" if !standing? && !muckled? && checkrt == 0
+        until(standing?)
+            change_stance('defensive')
+            fput 'stand'
+        end
+end
+def npcs
+	npcs = GameObj.npcs.find_all { |i| i.status !~ /dead/ }
+end
+
+def shield_check()
+	fput "prep 1009" if Spell[1009].affordable? && !Spell[1009].active?
+	fput "sing tower"
+end
+def get_loot()
+    Script.run('eloot')
+end
+#settings_hash{
+#	:mapdb_fwi_trinket     =>UserVars.mapdb_fwi_trinket,
+#}
+Script.start ("helpfolks") if !Script.running?("helpfolks")
+Script.start ("servant") if Char.prof =~ /Empath|Cleric/ && !Script.running?("servant")
+Script.start ("signore") if !Script.running?("signore")
+while(true)
+
+target_line = waitfor("gestures at","points at","points down","vanishes!","points up","puckers his lips expectantly", "rubs his chin thoughtfully", "channels at","just handed Kitac some coins","slowly empties his lungs","snaps his fingers","holds up two fingers and slowly pinches them together","thumps you","gives you a series of teasing little prods", "offers you","climbs up towards","winks at you","swings a","draws it from","approaches the elemental instability", "stows it in", "stows his lor runestaff", "tonis", "winks at", "blinks at", "coughs at", /\[Private\]\-/ )
+	
+	friendlist.each do |person|
+		moblist = get_target()
+		### Mana Sharing
+		if(target_line =~ /#{person} winks at you ./i)
+			if mana?(60)
+			fput "send 40 #{person}"
+				else
+					fput "wave #{person}"
+					fput "snicker #{person}"
+			end
+		elsif (target_line =~ /#{person} winks at #{person}./i)
+			fput "boost loot major"
+		elsif (target_line =~ /#{person} blinks at #{person}./i)
+			if Char.prof =~ /Cleric|Sorcerer|Empath/
+				Spell[140].cast if Spell[140].known? && Spell[140].affordable?
+			elsif Char.prof =~ /Wizard/
+				Spell[919].cast if Spell[919].known? && Spell[919].affordable?
+			end
+		elsif (target_line =~ /#{person} coughs at #{person}./i)
+			if Char.prof =~ /Cleric|Sorcerer|Empath/
+				Spell[130].cast if Spell[130].known? && Spell[130].affordable?
+			elsif Char.prof =~ /Wizard/
+				Spell[930].cast if Spell[930].known? && Spell[930].affordable?
+			end
+		#elsif (target_line =~ /#{person} stows his lor runestaff./i)
+			#if Char.prof =~ /Empath|Wizard|Sorcerer/
+				#fput "sheath"
+			#end
+		elsif (target_line =~ /just handed Kitac some coins./i)
+			wealth_line = dothistimeout "wealth quiet", 1, /coins? with you.$/
+				@coins = wealth_line.match(/([0-9,]+)/)[1].sub(/[^0-9]/, '').to_i
+					fput "give Kitac #{@coins} coins"
+		### Entry into Confluence
+		elsif (target_line =~ /#{person} approaches the elemental instability ./i)
+			fput "push insta with soul"
+		#elsif (target_line =~ /#{person} says, "Tonis."/i)
+			#if Char.prof =~ /Bard/
+				#Script.run "tonis" if !Spell[1035].active? && Spell[1035].affordable?
+			#else
+				#Script.kill "tonis" if Spell[1035].active?
+			#end
+		#elsif (target_line =~ /#{person} draws his lor runetaff./i)
+			#if checkright.nil?
+				#if Char.prof =~ /Wizard|Sorcerer|Empath/
+					#fput "gird"
+				#elsif Char.prof =~ /Rogue|Warrior/
+					#fput "gird"
+				#end
+			#end
+
+
+		elsif(target_line =~ /#{person} pulls you closer./i)
+            Spell[435].cast if Spell[435].known? && Spell[435].affordable?
+        elsif(target_line =~ /#{person} bursts into tears/i)
+			if Char.name =~ /Teclys/
+				if mana?(30)
+					multifput "prep 720", "cast target"
+				else
+					multifput "wave #{person}","snicker #{person}"
+				end
+			end
+		elsif(target_line =~ /#{person} thumps you!/i)
+			if (mana?())
+				start_script "ewaggle", ["#{person}"]
+				else
+			          fput "shake head"
+			  end
+		### climb hole thru the privy
+		elsif (target_line =~ /climbs up towards ./i)
+			climb = dothistimeout "climb hole" ,3, /skillfully move up|you attempt to climb/
+				if climb !~ /skillfully move up/
+					waitcastrt?
+					stand() if !standing?
+					waitcastrt?
+					fput "climb hole"
+				end
+		### Exhale to waggle!
+		elsif (target_line =~ /#{person} slowly empties his lungs./i)
+			result = dothistimeout "mana", 2, /MANA SPELLUP ability (\d+) out of (\d+) times/
+			if result =~ /MANA SPELLUP ability (\d+) out of (\d+) times/
+      			if Regexp.last_match(1).to_i < Regexp.last_match(2).to_i
+        			fput "mana spellup"
+      			else
+        			Script.start("ewaggle")
+      			end
+    		end
+		### REMOVE RING, WEAR RING reference
+		elsif (target_line =~ /#{person} vanishes!/i)
+			multifput "stow left","rem ring", "wear ring", "turn ring"
+		### Snap your fingers! Council of Light/Order of Voln/Guardians of Sunfust routine
+		elsif (target_line =~ /#{person} snaps his fingers./i)
+			Script.start ("signore") if !Script.running? ("signore")
+		elsif (target_line =~ /#{person} gives you a series of teasing little prods./i)
+			if Char.prof =~ /Rogue/
+				Script.run "tpick","ground" if !(running? 'tpick')
+			else
+				Script.kill "tpick"
+				Script.run "tpick", "ground"
+			end
+		### Kiss self
+		elsif (target_line =~ /#{person} puckers his lips expectantly./i)
+			Script.run("go2", "2300")
+		### Think --Consider
+		elsif (target_line =~ /#{person} rubs his chin thoughtfully./i)
+			fput "join #{person}"
+		### Point Up!
+		elsif (target_line =~ /#{person} points up./i)
+			multifput "turn #{mapdb_fwi_trinket}"
+			Script.run("go2","23243")
+			
+		elsif (target_line =~ /#{person} points down./i)
+			Script.run("go2", "28956")
+			#fput "t2"
+		### Offers you an item
+		elsif(target_line =~ /#{person} offers you./i)
+			if Char.name =~ /Jairlorna|Musix|Kitac/
+				multifput "accept", "stow right"
+			elsif Char.name =~ /Chuco|Teclys|Frittz|Marchese/
+				multifput "stow left", "accept", "stow left"
+				if checkright.nil?
+					if Char.name =~ /Mugz/
+						fput "gird"
+					end
+				end
+			end
+	    end
+	end     
+end
