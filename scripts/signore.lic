@@ -345,8 +345,11 @@ unless running? "infomon"
   wait_until { running? "infomon" }
 end
 
+resting_rooms = [228, 28991, 2300, 26215, 188, 208, 28813,3668, 10861, 1438, 1932, 1005]
 loop {
   exit if dead?
+  wait_while {resting_rooms.include?(Room.current.id)}
   Signore.cast!
   sleep 0.1
+  
 }
